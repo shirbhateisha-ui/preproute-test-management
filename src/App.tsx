@@ -4,6 +4,9 @@ import ProtectedRoute from '@/components/ProtectedRoute'
 import AppLayout from '@/components/layout/AppLayout'
 import LoginPage from '@/pages/LoginPage'
 import DashboardPage from '@/pages/DashboardPage'
+import CreateTestPage from '@/pages/CreateTestPage'
+import EditTestPage from '@/pages/EditTestPage'
+import ComingSoonPage from '@/pages/ComingSoonPage'
 
 export default function App() {
   return (
@@ -15,6 +18,20 @@ export default function App() {
           <Route element={<AppLayout />}>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/tests/new" element={<CreateTestPage />} />
+            <Route path="/tests/:id/edit" element={<EditTestPage />} />
+            <Route
+              path="/tests/:id/questions"
+              element={<ComingSoonPage title="Add Questions" />}
+            />
+            <Route
+              path="/tests/:id"
+              element={<ComingSoonPage title="View Test" />}
+            />
+            <Route
+              path="/test-tracking"
+              element={<ComingSoonPage title="Test Tracking" />}
+            />
           </Route>
         </Route>
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
