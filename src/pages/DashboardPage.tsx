@@ -67,7 +67,7 @@ const DIFFICULTY_OPTIONS: { value: 'all' | TestDifficulty; label: string }[] = [
   { value: 'all', label: 'All difficulties' },
   { value: 'easy', label: 'Easy' },
   { value: 'medium', label: 'Medium' },
-  { value: 'difficult', label: 'Difficult' },
+  { value: 'hard', label: 'Difficult' },
 ]
 
 function normalizeType(type: string): string {
@@ -76,7 +76,7 @@ function normalizeType(type: string): string {
 
 function normalizeDifficulty(difficulty: string): string {
   const d = difficulty.toLowerCase()
-  if (d === 'hard') return 'difficult'
+  if (d === 'difficult') return 'hard'
   return d
 }
 
@@ -309,7 +309,7 @@ export default function DashboardPage() {
                         asChild
                         className="text-ink-muted hover:text-ink-strong"
                       >
-                        <Link to={`/tests/${test.id}/edit`} title="View">
+                        <Link to={`/tests/${test.id}`} title="View">
                           <Eye />
                           <span className="sr-only">View</span>
                         </Link>

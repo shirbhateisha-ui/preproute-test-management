@@ -175,3 +175,12 @@ body {
     @apply font-sans;
   }
 }
+
+/* TipTap placeholder */
+.tiptap p.is-editor-empty:first-child::before {
+  color: var(--color-ink-subtle);
+  content: attr(data-placeholder);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}

@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import toast from 'react-hot-toast'
+import { ListChecks } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
@@ -148,24 +149,39 @@ export default function EditTestPage() {
               onSubmit={onSubmit}
             />
 
-            <div className="mt-8 flex flex-wrap items-center justify-end gap-3">
+            <div className="mt-8 flex flex-wrap items-center justify-between gap-3">
               <Button
                 type="button"
-                variant="secondary"
-                className="h-10 min-w-24 bg-primary-100 text-primary hover:bg-primary-100/80"
-                disabled={isSaving}
-                onClick={() => navigate('/dashboard')}
+                variant="outline"
+                className="h-10 gap-2 border-line"
+                onClick={() => navigate(`/tests/${id}/questions`)}
               >
-                Cancel
+                <ListChecks className="size-4" />
+                Manage Questions
+                {test && test.total_questions > 0 && (
+                  <span className="text-ink-subtle">({test.total_questions})</span>
+                )}
               </Button>
-              <Button
-                type="submit"
-                form={FORM_ID}
-                className="h-10 min-w-24"
-                disabled={isSaving}
-              >
-                {isSaving ? 'Saving…' : 'Save'}
-              </Button>
+
+              <div className="flex flex-wrap items-center gap-3">
+                <Button
+                  type="button"
+                  variant="secondary"
+                  className="h-10 min-w-24 bg-primary-100 text-primary hover:bg-primary-100/80"
+                  disabled={isSaving}
+                  onClick={() => navigate('/dashboard')}
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="submit"
+                  form={FORM_ID}
+                  className="h-10 min-w-24"
+                  disabled={isSaving}
+                >
+                  {isSaving ? 'Saving…' : 'Save'}
+                </Button>
+              </div>
             </div>
           </>
         )}

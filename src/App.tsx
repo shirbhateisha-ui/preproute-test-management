@@ -4,8 +4,11 @@ import ProtectedRoute from '@/components/ProtectedRoute'
 import AppLayout from '@/components/layout/AppLayout'
 import LoginPage from '@/pages/LoginPage'
 import DashboardPage from '@/pages/DashboardPage'
+import AddQuestionsPage from '@/pages/AddQuestionsPage'
+import PreviewPublishPage from '@/pages/PreviewPublishPage'
 import CreateTestPage from '@/pages/CreateTestPage'
 import EditTestPage from '@/pages/EditTestPage'
+import ViewTestPage from '@/pages/ViewTestPage'
 import ComingSoonPage from '@/pages/ComingSoonPage'
 
 export default function App() {
@@ -20,14 +23,9 @@ export default function App() {
             <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/tests/new" element={<CreateTestPage />} />
             <Route path="/tests/:id/edit" element={<EditTestPage />} />
-            <Route
-              path="/tests/:id/questions"
-              element={<ComingSoonPage title="Add Questions" />}
-            />
-            <Route
-              path="/tests/:id"
-              element={<ComingSoonPage title="View Test" />}
-            />
+            <Route path="/tests/:id/questions" element={<AddQuestionsPage />} />
+            <Route path="/tests/:id/preview" element={<PreviewPublishPage />} />
+            <Route path="/tests/:id" element={<ViewTestPage />} />
             <Route
               path="/test-tracking"
               element={<ComingSoonPage title="Test Tracking" />}

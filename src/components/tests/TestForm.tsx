@@ -149,12 +149,12 @@ export function TestForm({
               onTypeChange?.(next)
             }}
           >
-            <TabsList className="h-11 w-full justify-start gap-1 rounded-lg border border-line bg-surface p-1">
+            <TabsList className="h-10 w-fit justify-start gap-1 rounded-lg border border-line bg-surface p-1">
               {TYPE_TABS.map((tab) => (
                 <TabsTrigger
                   key={tab.value}
                   value={tab.value}
-                  className="h-full flex-1 rounded-md px-4 text-sm font-medium text-ink-muted after:hidden data-active:bg-primary-50 data-active:text-primary data-active:shadow-none"
+                  className="h-full rounded-md px-4 text-sm font-medium text-ink-muted after:hidden data-active:bg-primary-50 data-active:text-primary data-active:shadow-none"
                 >
                   {tab.label}
                 </TabsTrigger>
@@ -312,7 +312,7 @@ export function TestForm({
         <p className="mb-3 text-sm font-medium text-ink-strong">
           Marking Scheme:
         </p>
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 lg:grid-cols-5">
           <Controller
             name="wrong_marks"
             control={control}
@@ -349,46 +349,44 @@ export function TestForm({
               />
             )}
           />
-        </div>
-      </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-1.5">
-          <Label htmlFor={`${formId}-questions`} className="text-ink-muted">
-            No of Questions
-          </Label>
-          <Input
-            id={`${formId}-questions`}
-            type="number"
-            min={1}
-            placeholder="Ex: 50"
-            className="h-11 border-line bg-surface"
-            aria-invalid={!!errors.total_questions}
-            {...register('total_questions')}
-          />
-          {errors.total_questions && (
-            <p className="text-xs text-danger">
-              {errors.total_questions.message}
-            </p>
-          )}
-        </div>
+          <div className="space-y-1.5">
+            <Label htmlFor={`${formId}-questions`} className="text-ink-muted">
+              No of Questions
+            </Label>
+            <Input
+              id={`${formId}-questions`}
+              type="number"
+              min={1}
+              placeholder="Ex: 50"
+              className="h-11 border-line bg-surface"
+              aria-invalid={!!errors.total_questions}
+              {...register('total_questions')}
+            />
+            {errors.total_questions && (
+              <p className="text-xs text-danger">
+                {errors.total_questions.message}
+              </p>
+            )}
+          </div>
 
-        <div className="space-y-1.5">
-          <Label htmlFor={`${formId}-marks`} className="text-ink-muted">
-            Total Marks
-          </Label>
-          <Input
-            id={`${formId}-marks`}
-            type="number"
-            min={1}
-            placeholder="Ex: 250 Marks"
-            className="h-11 border-line bg-surface"
-            aria-invalid={!!errors.total_marks}
-            {...register('total_marks')}
-          />
-          {errors.total_marks && (
-            <p className="text-xs text-danger">{errors.total_marks.message}</p>
-          )}
+          <div className="space-y-1.5">
+            <Label htmlFor={`${formId}-marks`} className="text-ink-muted">
+              Total Marks
+            </Label>
+            <Input
+              id={`${formId}-marks`}
+              type="number"
+              min={1}
+              placeholder="Ex: 250 Marks"
+              className="h-11 border-line bg-surface"
+              aria-invalid={!!errors.total_marks}
+              {...register('total_marks')}
+            />
+            {errors.total_marks && (
+              <p className="text-xs text-danger">{errors.total_marks.message}</p>
+            )}
+          </div>
         </div>
       </div>
     </form>

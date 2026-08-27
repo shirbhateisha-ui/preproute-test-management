@@ -52,7 +52,7 @@ export default function LoginPage() {
   return (
     <div className="flex h-screen overflow-hidden bg-bg p-3 sm:p-6">
       <div className="flex flex-1 overflow-hidden rounded-2xl bg-surface">
-        <div className="hidden flex-1 items-center justify-center bg-primary-50 lg:flex">
+        <div className="hidden flex-1 items-center justify-center bg-[#f6fbff] lg:flex">
           <img
             src={illustration}
             alt=""
@@ -105,11 +105,15 @@ export default function LoginPage() {
                 )}
               </div>
 
-              <button type="button" className="text-sm font-medium text-primary hover:underline">
+              <button type="button" className="text-sm font-medium text-primary-600 hover:underline">
                 Forgot password?
               </button>
 
-              <Button type="submit" disabled={isLoading} className="h-11 w-full">
+              <Button
+                type="submit"
+                disabled={isLoading}
+                className="h-11 w-full bg-primary-600 text-white hover:bg-primary-600/90"
+              >
                 {isLoading ? 'Signing in…' : 'Login'}
               </Button>
             </form>
