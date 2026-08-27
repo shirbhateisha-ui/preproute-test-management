@@ -2,12 +2,12 @@ import { useRef, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import { Button } from '@/components/ui/button'
+import { TestForm } from '@/components/tests/TestForm'
 import {
-  TestForm,
   TYPE_TABS,
   toWritePayload,
   type TestFormValues,
-} from '@/components/tests/TestForm'
+} from '@/components/tests/test-form-utils'
 import { useCreateTestMutation } from '@/slice/tests/tests-api'
 import type { TestType } from '@/types/test'
 

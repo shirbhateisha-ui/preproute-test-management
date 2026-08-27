@@ -10,7 +10,7 @@ import QuestionEditor, {
   type DraftErrors,
   type QuestionDraft,
 } from '@/components/questions/QuestionEditor'
-import { TYPE_TABS } from '@/components/tests/TestForm'
+import { TYPE_TABS } from '@/components/tests/test-form-utils'
 import ChipList from '@/components/tests/ChipList'
 import { useGetTestQuery, useUpdateTestMutation } from '@/slice/tests/tests-api'
 import {
@@ -25,7 +25,7 @@ import {
   useUpdateQuestionMutation,
 } from '@/slice/questions/questions-api'
 import type { Question, QuestionCreatePayload } from '@/types/question'
-import { stripHtml } from '@/components/questions/RichTextEditor'
+import { stripHtml } from '@/lib/html'
 
 function normalizeDifficulty(value?: string | null) {
   const d = (value ?? '').toLowerCase()

@@ -4,13 +4,13 @@ import toast from 'react-hot-toast'
 import { ListChecks } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { TestForm } from '@/components/tests/TestForm'
 import {
-  TestForm,
   TYPE_TABS,
   defaultTestFormValues,
   toWritePayload,
   type TestFormValues,
-} from '@/components/tests/TestForm'
+} from '@/components/tests/test-form-utils'
 import {
   useGetTestQuery,
   useUpdateTestMutation,

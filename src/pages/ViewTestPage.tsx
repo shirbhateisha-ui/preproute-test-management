@@ -14,7 +14,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { TYPE_TABS } from '@/components/tests/TestForm'
+import { TYPE_TABS } from '@/components/tests/test-form-utils'
 import ChipList from '@/components/tests/ChipList'
 import { useGetTestQuery } from '@/slice/tests/tests-api'
 import { useFetchBulkQuestionsQuery } from '@/slice/questions/questions-api'
