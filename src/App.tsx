@@ -10,6 +10,7 @@ import CreateTestPage from '@/pages/CreateTestPage'
 import EditTestPage from '@/pages/EditTestPage'
 import ViewTestPage from '@/pages/ViewTestPage'
 import ComingSoonPage from '@/pages/ComingSoonPage'
+import TestTrackingPage from '@/pages/TestTrackingPage'
 
 export default function App() {
   return (
@@ -26,10 +27,7 @@ export default function App() {
             <Route path="/tests/:id/questions" element={<AddQuestionsPage />} />
             <Route path="/tests/:id/preview" element={<PreviewPublishPage />} />
             <Route path="/tests/:id" element={<ViewTestPage />} />
-            <Route
-              path="/test-tracking"
-              element={<ComingSoonPage title="Test Tracking" />}
-            />
+            <Route path="/test-tracking" element={<TestTrackingPage />} />
           </Route>
         </Route>
         <Route path="*" element={<Navigate to="/dashboard" replace />} />

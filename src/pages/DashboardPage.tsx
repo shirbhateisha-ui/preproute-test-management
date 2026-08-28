@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import {
@@ -10,6 +10,17 @@ import {
   AlertCircle,
   FileQuestion,
   RefreshCw,
+  ChevronLeft,
+  ChevronRight,
+  ChevronUp,
+  ChevronDown,
+  ChevronsUpDown,
+  AlertTriangle,
+  Send,
+  FileText,
+  CircleCheck,
+  FileEdit,
+  CalendarClock,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -40,12 +51,19 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
 import {
   useDeleteTestMutation,
   useGetTestsQuery,
+  useUpdateTestMutation,
 } from '@/slice/tests/tests-api'
 import type { Test, TestDifficulty, TestStatus, TestType } from '@/types/test'
 import { cn } from '@/lib/utils'
+
+// ---------------------------------------------------------------------------
+// Constants
+// ---------------------------------------------------------------------------
+const PAGE_SIZE = 10
 
 const STATUS_OPTIONS: { value: 'all' | TestStatus; label: string }[] = [
   { value: 'all', label: 'All statuses' },
@@ -70,6 +88,12 @@ const DIFFICULTY_OPTIONS: { value: 'all' | TestDifficulty; label: string }[] = [
   { value: 'hard', label: 'Difficult' },
 ]
 
+type SortKey = 'name' | 'created_at' | 'total_questions' | 'total_marks' | 'difficulty'
+type SortDir = 'asc' | 'desc'
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
 function normalizeType(type: string): string {
   return type.toLowerCase().replace(/\s+/g, '')
 }
@@ -90,20 +114,22 @@ function formatDate(value: string) {
   }).format(date)
 }
 
+function isExpiringSoon(test: Test) {
+  if (test.status !== 'live' || !test.expiry_date) return false
+  const diff = new Date(test.expiry_date).getTime() - Date.now()
+  return diff > 0 && diff <= 7 * 24 * 60 * 60 * 1000
+}
+
+const DIFFICULTY_ORDER: Record<string, number> = { easy: 1, medium: 2, hard: 3, difficult: 3 }
+
 function statusBadgeClass(status: TestStatus) {
   switch (status) {
-    case 'live':
-      return 'bg-success-soft text-success'
-    case 'draft':
-      return 'bg-bg-muted text-ink-muted'
-    case 'scheduled':
-      return 'bg-info-bg text-info'
-    case 'unpublished':
-      return 'bg-primary-50 text-primary'
-    case 'expired':
-      return 'bg-danger/10 text-danger'
-    default:
-      return 'bg-bg-muted text-ink-muted'
+    case 'live':        return 'bg-success-soft text-success'
+    case 'draft':       return 'bg-bg-muted text-ink-muted'
+    case 'scheduled':   return 'bg-info-bg text-info'
+    case 'unpublished': return 'bg-primary-50 text-primary'
+    case 'expired':     return 'bg-danger/10 text-danger'
+    default:            return 'bg-bg-muted text-ink-muted'
   }
 }
 
@@ -118,18 +144,109 @@ function StatusBadge({ status }: { status: TestStatus }) {
   )
 }
 
+// ---------------------------------------------------------------------------
+// Stat card
+// ---------------------------------------------------------------------------
+interface StatCardProps {
+  label: string
+  value: number
+  icon: React.ElementType
+  iconClass: string
+  bgClass: string
+  active?: boolean
+  onClick?: () => void
+}
+
+function StatCard({ label, value, icon: Icon, iconClass, bgClass, active, onClick }: StatCardProps) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'flex flex-1 min-w-0 items-center gap-3 rounded-xl border p-4 text-left shadow-card transition-all',
+        active
+          ? 'border-primary bg-primary-50'
+          : 'border-line bg-surface hover:border-primary/40',
+      )}
+    >
+      <div className={cn('flex size-10 shrink-0 items-center justify-center rounded-lg', bgClass)}>
+        <Icon className={cn('size-5', iconClass)} />
+      </div>
+      <div className="min-w-0">
+        <p className="text-2xl font-semibold text-ink-strong">{value}</p>
+        <p className="truncate text-sm text-ink-muted">{label}</p>
+      </div>
+    </button>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Sortable header cell
+// ---------------------------------------------------------------------------
+function SortHead({
+  label,
+  sortKey,
+  current,
+  dir,
+  onSort,
+  className,
+}: {
+  label: string
+  sortKey: SortKey
+  current: SortKey
+  dir: SortDir
+  onSort: (k: SortKey) => void
+  className?: string
+}) {
+  const active = current === sortKey
+  return (
+    <TableHead
+      className={cn('cursor-pointer select-none px-4 text-ink-muted', className)}
+      onClick={() => onSort(sortKey)}
+    >
+      <span className="inline-flex items-center gap-1">
+        {label}
+        {active ? (
+          dir === 'asc' ? (
+            <ChevronUp className="size-3" />
+          ) : (
+            <ChevronDown className="size-3" />
+          )
+        ) : (
+          <ChevronsUpDown className="size-3 opacity-40" />
+        )}
+      </span>
+    </TableHead>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Main page
+// ---------------------------------------------------------------------------
 export default function DashboardPage() {
-  const { data: tests, isLoading, isError, refetch, isFetching } =
-    useGetTestsQuery()
+  const { data: tests, isLoading, isError, refetch, isFetching } = useGetTestsQuery()
   const [deleteTest, { isLoading: isDeleting }] = useDeleteTestMutation()
+  const [updateTest, { isLoading: isPublishing }] = useUpdateTestMutation()
 
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState<'all' | TestStatus>('all')
   const [typeFilter, setTypeFilter] = useState<'all' | TestType>('all')
-  const [difficultyFilter, setDifficultyFilter] = useState<
-    'all' | TestDifficulty
-  >('all')
+  const [difficultyFilter, setDifficultyFilter] = useState<'all' | TestDifficulty>('all')
   const [pendingDelete, setPendingDelete] = useState<Test | null>(null)
+  const [pendingPublish, setPendingPublish] = useState<Test | null>(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [sortKey, setSortKey] = useState<SortKey>('created_at')
+  const [sortDir, setSortDir] = useState<SortDir>('desc')
+
+  const stats = useMemo(() => {
+    if (!tests) return { total: 0, live: 0, draft: 0, scheduled: 0 }
+    return {
+      total:     tests.length,
+      live:      tests.filter((t) => t.status === 'live').length,
+      draft:     tests.filter((t) => t.status === 'draft').length,
+      scheduled: tests.filter((t) => t.status === 'scheduled').length,
+    }
+  }, [tests])
 
   const filtered = useMemo(() => {
     if (!tests) return []
@@ -137,18 +254,11 @@ export default function DashboardPage() {
     return tests
       .filter((t) => {
         if (statusFilter !== 'all' && t.status !== statusFilter) return false
-        if (
-          typeFilter !== 'all' &&
-          normalizeType(t.type) !== normalizeType(typeFilter)
-        ) {
-          return false
-        }
+        if (typeFilter !== 'all' && normalizeType(t.type) !== normalizeType(typeFilter)) return false
         if (
           difficultyFilter !== 'all' &&
           normalizeDifficulty(t.difficulty) !== difficultyFilter
-        ) {
-          return false
-        }
+        ) return false
         if (!q) return true
         return (
           t.name.toLowerCase().includes(q) ||
@@ -156,11 +266,49 @@ export default function DashboardPage() {
         )
       })
       .slice()
-      .sort(
-        (a, b) =>
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-      )
-  }, [tests, search, statusFilter, typeFilter, difficultyFilter])
+      .sort((a, b) => {
+        let cmp = 0
+        switch (sortKey) {
+          case 'name':
+            cmp = a.name.localeCompare(b.name)
+            break
+          case 'created_at':
+            cmp = new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+            break
+          case 'total_questions':
+            cmp = (a.total_questions ?? 0) - (b.total_questions ?? 0)
+            break
+          case 'total_marks':
+            cmp = (a.total_marks ?? 0) - (b.total_marks ?? 0)
+            break
+          case 'difficulty':
+            cmp =
+              (DIFFICULTY_ORDER[a.difficulty?.toLowerCase()] ?? 0) -
+              (DIFFICULTY_ORDER[b.difficulty?.toLowerCase()] ?? 0)
+            break
+        }
+        return sortDir === 'asc' ? cmp : -cmp
+      })
+  }, [tests, search, statusFilter, typeFilter, difficultyFilter, sortKey, sortDir])
+
+  useEffect(() => {
+    setCurrentPage(1)
+  }, [search, statusFilter, typeFilter, difficultyFilter, sortKey, sortDir])
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
+  const paginated = filtered.slice(
+    (currentPage - 1) * PAGE_SIZE,
+    currentPage * PAGE_SIZE,
+  )
+
+  function handleSort(key: SortKey) {
+    if (sortKey === key) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'))
+    } else {
+      setSortKey(key)
+      setSortDir('asc')
+    }
+  }
 
   const handleDelete = async () => {
     if (!pendingDelete) return
@@ -176,8 +324,23 @@ export default function DashboardPage() {
     }
   }
 
+  const handlePublish = async () => {
+    if (!pendingPublish) return
+    try {
+      await updateTest({ id: pendingPublish.id, body: { status: 'live' } }).unwrap()
+      toast.success(`"${pendingPublish.name}" is now live`)
+      setPendingPublish(null)
+    } catch (err) {
+      const message =
+        (err as { data?: { message?: string } })?.data?.message ??
+        'Failed to publish test. Please try again.'
+      toast.error(message)
+    }
+  }
+
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-xl font-semibold text-ink-strong">Dashboard</h1>
@@ -193,6 +356,55 @@ export default function DashboardPage() {
         </Button>
       </div>
 
+      {/* Stat cards */}
+      {isLoading ? (
+        <div className="flex gap-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <Skeleton key={i} className="h-16 flex-1 rounded-xl" />
+          ))}
+        </div>
+      ) : isError ? null : (
+        <div className="flex flex-wrap gap-3">
+          <StatCard
+            label="Total Tests"
+            value={stats.total}
+            icon={FileText}
+            iconClass="text-primary"
+            bgClass="bg-primary-50"
+            active={statusFilter === 'all'}
+            onClick={() => setStatusFilter('all')}
+          />
+          <StatCard
+            label="Live"
+            value={stats.live}
+            icon={CircleCheck}
+            iconClass="text-success"
+            bgClass="bg-success-soft"
+            active={statusFilter === 'live'}
+            onClick={() => setStatusFilter('live')}
+          />
+          <StatCard
+            label="Draft"
+            value={stats.draft}
+            icon={FileEdit}
+            iconClass="text-ink-muted"
+            bgClass="bg-bg-muted"
+            active={statusFilter === 'draft'}
+            onClick={() => setStatusFilter('draft')}
+          />
+          <StatCard
+            label="Scheduled"
+            value={stats.scheduled}
+            icon={CalendarClock}
+            iconClass="text-info"
+            bgClass="bg-info-bg"
+            active={statusFilter === 'scheduled'}
+            onClick={() => setStatusFilter('scheduled')}
+          />
+        </div>
+      )}
+
+      {/* Filters */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative flex-1">
           <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-ink-subtle" />
@@ -235,9 +447,7 @@ export default function DashboardPage() {
         </Select>
         <Select
           value={difficultyFilter}
-          onValueChange={(v) =>
-            setDifficultyFilter(v as 'all' | TestDifficulty)
-          }
+          onValueChange={(v) => setDifficultyFilter(v as 'all' | TestDifficulty)}
         >
           <SelectTrigger className="h-10 w-full border-line bg-surface sm:w-44">
             <SelectValue placeholder="Difficulty" />
@@ -252,6 +462,7 @@ export default function DashboardPage() {
         </Select>
       </div>
 
+      {/* Table */}
       <div className="overflow-hidden rounded-xl border border-line bg-surface shadow-card">
         {isLoading ? (
           <LoadingState />
@@ -269,81 +480,181 @@ export default function DashboardPage() {
             }}
           />
         ) : (
-          <Table>
-            <TableHeader>
-              <TableRow className="border-line hover:bg-transparent">
-                <TableHead className="px-4 text-ink-muted">Name</TableHead>
-                <TableHead className="px-4 text-ink-muted">Subject</TableHead>
-                <TableHead className="px-4 text-ink-muted">Status</TableHead>
-                <TableHead className="px-4 text-ink-muted">Created</TableHead>
-                <TableHead className="px-4 text-right text-ink-muted">
-                  Actions
-                </TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.map((test) => (
-                <TableRow key={test.id} className="border-line">
-                  <TableCell className="px-4 py-3.5">
-                    <div className="max-w-64 truncate font-medium text-ink-strong">
-                      {test.name}
-                    </div>
-                    <div className="mt-0.5 text-xs capitalize text-ink-subtle">
-                      {test.type}
-                    </div>
-                  </TableCell>
-                  <TableCell className="px-4 py-3.5 text-ink-body">
-                    {test.subject || '—'}
-                  </TableCell>
-                  <TableCell className="px-4 py-3.5">
-                    <StatusBadge status={test.status} />
-                  </TableCell>
-                  <TableCell className="px-4 py-3.5 text-ink-body">
-                    {formatDate(test.created_at)}
-                  </TableCell>
-                  <TableCell className="px-4 py-3.5">
-                    <div className="flex items-center justify-end gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        asChild
-                        className="text-ink-muted hover:text-ink-strong"
-                      >
-                        <Link to={`/tests/${test.id}`} title="View">
-                          <Eye />
-                          <span className="sr-only">View</span>
-                        </Link>
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        asChild
-                        className="text-ink-muted hover:text-ink-strong"
-                      >
-                        <Link to={`/tests/${test.id}/edit`} title="Edit">
-                          <Pencil />
-                          <span className="sr-only">Edit</span>
-                        </Link>
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon-sm"
-                        title="Delete"
-                        className="text-ink-muted hover:text-danger"
-                        onClick={() => setPendingDelete(test)}
-                      >
-                        <Trash2 />
-                        <span className="sr-only">Delete</span>
-                      </Button>
-                    </div>
-                  </TableCell>
+          <>
+            <Table>
+              <TableHeader>
+                <TableRow className="border-line hover:bg-transparent">
+                  <SortHead label="Name"      sortKey="name"            current={sortKey} dir={sortDir} onSort={handleSort} className="px-4" />
+                  <TableHead className="px-4 text-ink-muted">Subject</TableHead>
+                  <TableHead className="px-4 text-ink-muted">Status</TableHead>
+                  <SortHead label="Difficulty" sortKey="difficulty"     current={sortKey} dir={sortDir} onSort={handleSort} />
+                  <SortHead label="Questions"  sortKey="total_questions" current={sortKey} dir={sortDir} onSort={handleSort} />
+                  <SortHead label="Marks"      sortKey="total_marks"    current={sortKey} dir={sortDir} onSort={handleSort} />
+                  <SortHead label="Created"    sortKey="created_at"     current={sortKey} dir={sortDir} onSort={handleSort} />
+                  <TableHead className="px-4 text-right text-ink-muted">Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {paginated.map((test) => {
+                  const expiring = isExpiringSoon(test)
+                  const noQuestions = (test.total_questions ?? 0) === 0
+                  return (
+                    <TableRow key={test.id} className="border-line">
+                      {/* Name */}
+                      <TableCell className="px-4 py-3.5">
+                        <div className="max-w-56 truncate font-medium text-ink-strong">
+                          {test.name}
+                        </div>
+                        <div className="mt-0.5 text-xs capitalize text-ink-subtle">
+                          {test.type}
+                        </div>
+                      </TableCell>
+
+                      {/* Subject */}
+                      <TableCell className="px-4 py-3.5 text-ink-body">
+                        {test.subject || '—'}
+                      </TableCell>
+
+                      {/* Status */}
+                      <TableCell className="px-4 py-3.5">
+                        <div className="flex flex-col gap-1">
+                          <StatusBadge status={test.status} />
+                          {expiring && (
+                            <span className="text-xs text-danger">Expiring soon</span>
+                          )}
+                        </div>
+                      </TableCell>
+
+                      {/* Difficulty */}
+                      <TableCell className="px-4 py-3.5 capitalize text-ink-body">
+                        {test.difficulty || '—'}
+                      </TableCell>
+
+                      {/* Questions */}
+                      <TableCell className="px-4 py-3.5">
+                        {noQuestions ? (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <span className="inline-flex items-center gap-1 text-sm text-danger">
+                                <AlertTriangle className="size-3.5" />0
+                              </span>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="text-xs">
+                              No questions added yet
+                            </TooltipContent>
+                          </Tooltip>
+                        ) : (
+                          <span className="text-sm text-ink-body">{test.total_questions}</span>
+                        )}
+                      </TableCell>
+
+                      {/* Marks */}
+                      <TableCell className="px-4 py-3.5 text-ink-body">
+                        {test.total_marks ?? '—'}
+                      </TableCell>
+
+                      {/* Created */}
+                      <TableCell className="px-4 py-3.5 text-ink-body">
+                        {formatDate(test.created_at)}
+                      </TableCell>
+
+                      {/* Actions */}
+                      <TableCell className="px-4 py-3.5">
+                        <div className="flex items-center justify-end gap-1">
+                          {test.status === 'draft' && (
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="icon-sm"
+                                  className="text-ink-muted hover:text-success"
+                                  onClick={() => setPendingPublish(test)}
+                                >
+                                  <Send />
+                                  <span className="sr-only">Publish</span>
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="text-xs">
+                                Publish
+                              </TooltipContent>
+                            </Tooltip>
+                          )}
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            asChild
+                            className="text-ink-muted hover:text-ink-strong"
+                          >
+                            <Link to={`/tests/${test.id}`} title="View">
+                              <Eye />
+                              <span className="sr-only">View</span>
+                            </Link>
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            asChild
+                            className="text-ink-muted hover:text-ink-strong"
+                          >
+                            <Link to={`/tests/${test.id}/edit`} title="Edit">
+                              <Pencil />
+                              <span className="sr-only">Edit</span>
+                            </Link>
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon-sm"
+                            title="Delete"
+                            className="text-ink-muted hover:text-danger"
+                            onClick={() => setPendingDelete(test)}
+                          >
+                            <Trash2 />
+                            <span className="sr-only">Delete</span>
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between border-t border-line px-4 py-3">
+                <p className="text-sm text-ink-muted">
+                  Page {currentPage} of {totalPages} &middot;{' '}
+                  {filtered.length} result{filtered.length !== 1 ? 's' : ''}
+                </p>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="outline"
+                    size="icon-sm"
+                    className="border-line"
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage((p) => p - 1)}
+                  >
+                    <ChevronLeft className="size-4" />
+                    <span className="sr-only">Previous page</span>
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="icon-sm"
+                    className="border-line"
+                    disabled={currentPage === totalPages}
+                    onClick={() => setCurrentPage((p) => p + 1)}
+                  >
+                    <ChevronRight className="size-4" />
+                    <span className="sr-only">Next page</span>
+                  </Button>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
 
+      {/* Delete confirmation */}
       <AlertDialog
         open={!!pendingDelete}
         onOpenChange={(open) => {
@@ -355,9 +666,7 @@ export default function DashboardPage() {
             <AlertDialogTitle>Delete test?</AlertDialogTitle>
             <AlertDialogDescription>
               This will permanently delete{' '}
-              <span className="font-medium text-ink-body">
-                {pendingDelete?.name}
-              </span>{' '}
+              <span className="font-medium text-ink-body">{pendingDelete?.name}</span>{' '}
               and all associated questions. This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -376,10 +685,43 @@ export default function DashboardPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Publish confirmation */}
+      <AlertDialog
+        open={!!pendingPublish}
+        onOpenChange={(open) => {
+          if (!open && !isPublishing) setPendingPublish(null)
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Publish test?</AlertDialogTitle>
+            <AlertDialogDescription>
+              <span className="font-medium text-ink-body">{pendingPublish?.name}</span>{' '}
+              will be set to Live and visible to students.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isPublishing}>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isPublishing}
+              onClick={(e) => {
+                e.preventDefault()
+                void handlePublish()
+              }}
+            >
+              {isPublishing ? 'Publishing…' : 'Publish'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
 
+// ---------------------------------------------------------------------------
+// States
+// ---------------------------------------------------------------------------
 function LoadingState() {
   return (
     <div className="space-y-3 p-4">
@@ -409,7 +751,7 @@ function ErrorState({
         <AlertCircle className="size-6" />
       </div>
       <div>
-        <p className="font-medium text-ink-strong">Couldn’t load tests</p>
+        <p className="font-medium text-ink-strong">Couldn't load tests</p>
         <p className="mt-1 text-sm text-ink-muted">
           Something went wrong while fetching the list. Please try again.
         </p>
