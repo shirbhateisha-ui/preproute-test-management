@@ -9,7 +9,6 @@ import PreviewPublishPage from '@/pages/PreviewPublishPage'
 import CreateTestPage from '@/pages/CreateTestPage'
 import EditTestPage from '@/pages/EditTestPage'
 import ViewTestPage from '@/pages/ViewTestPage'
-import ComingSoonPage from '@/pages/ComingSoonPage'
 import TestTrackingPage from '@/pages/TestTrackingPage'
 
 export default function App() {
